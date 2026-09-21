@@ -16,4 +16,20 @@ struct drm_mode_create_dumb {
     unsigned long long size; //total size of canvas in bytes
 };
 
+struct drm_mode_map_dumb {
+    unsigned int handle;
+    unsigned int pad;
+    unsigned long long offset;
+};
+
+struct framebuffer {
+    unsigned int fb_id;
+    unsigned int width;
+    unsigned int height;
+    unsigned int pitch;
+    unsigned int bpp;
+    unsigned int depth;
+    unsigned int handle;
+};
+
 #endif

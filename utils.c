@@ -18,9 +18,9 @@ void print(const char *str){
 );
 }
 
-void printn(int num){
+void printn(long int num){
     int i = 0;
-    char l[20];
+    char l[30];
     int is_neg = 0;
 
     if (num < 0){
@@ -40,7 +40,7 @@ void printn(int num){
         }
     }
 
-    char output[20];
+    char output[30];
     int j = 0;
 
     if (is_neg){
