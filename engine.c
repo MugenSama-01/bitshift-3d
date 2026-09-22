@@ -1,6 +1,6 @@
 #include "utils.h"
 
-int graphics_win(){
+int graphics_win(){  //opentind the graphics card file
     const char *path = "/dev/dri/card1";
     int fd;
 
@@ -16,7 +16,7 @@ int graphics_win(){
     return fd;
 }
 
-int create_buffer(int fd, struct drm_mode_create_dumb *dumb){
+int create_buffer(int fd, struct drm_mode_create_dumb *dumb){ // creating a buffer memory in the graphics card that does nothing
     int result;
 
     __asm__ volatile(
@@ -31,21 +31,7 @@ int create_buffer(int fd, struct drm_mode_create_dumb *dumb){
     return result;
 }
 
-int create_map(int fd, struct drm_mode_map_dumb *map){
-    int result;
-    __asm__ volatile(
-        "syscall"
-        :"=a" (result)
-        :"a" (16),
-        "D" (fd),
-        "S" (0xC01064B3),
-        "d" (map)
-        :"rcx","r11","memory"
-    );
-    return (result);
-}
-
-unsigned long map_buffer(unsigned long size, int fd, unsigned long long offset){
+unsigned long map_buffer(unsigned long size, int fd, unsigned long long offset){  //making display controller recognize it
     unsigned long result;
     register long r10 __asm__("r10") = 1;
     register long r9 __asm__("r9") = offset;
@@ -66,16 +52,15 @@ unsigned long map_buffer(unsigned long size, int fd, unsigned long long offset){
     return result;
 }
 
-int create_framebuffer(int fd, struct framebuffer *fb){
+int wrapper(int fd, unsigned int hex_code, void *my_struct){
     int result;
-
     __asm__ volatile(
         "syscall"
         :"=a" (result)
         :"a" (16),
         "D" (fd),
-        "S" (0xC01C64AE),
-        "d" (fb)
+        "S" (hex_code),
+        "d" (my_struct)
         :"rcx","r11","memory"
     );
     return result;
@@ -112,8 +97,8 @@ void _start(){
     map.pad = 0;
     map.offset=0;
 
-    printn(create_map(fd,&map));
-    print("Offset")
+    printn(wrapper(fd,0xC01064B3,&map)); // saying cpu about any memory in this block send it to the gpus vram not ram
+    print("Offset");
     printn(map.offset);
 
     unsigned long map_ptr=map_buffer(dumb.size , fd , map.offset);
@@ -129,12 +114,66 @@ void _start(){
     fb.depth=24;
     fb.handle=dumb.handle;
 
-    int fb_status = create_framebuffer(fd, &fb);
+    int fb_status = wrapper(fd,0xC01C64AE, &fb); // create frame buffer
     print("FB Status: ");
     printn(fb_status);
     
     print("Framebuffer ID: ");
     printn(fb.fb_id);
+
+    struct drm_mode_card_res res;
+    res.fb_id_ptr = 0;
+    res.crtc_id_ptr = 0;
+    res.connector_id_ptr = 0;
+    res.encoder_id_ptr = 0;
+    res.count_fbs = 0;
+    res.count_crtcs = 0;
+    res.count_connectors = 0;
+    res.count_encoders = 0;
+    res.min_width = 0;
+    res.max_width = 0;
+    res.min_height = 0;
+    res.max_height = 0;
+
+    printn(wrapper(fd ,0xC04064A0, &res)); //the the info about the resources
+    printn(res.count_crtcs);
+    printn(res.count_connectors);
+
+    unsigned int crtc_ids[res.count_crtcs];
+    unsigned int conn_ids[res.count_connectors];
+
+    res.crtc_id_ptr = (unsigned long long)crtc_ids;
+    res.connector_id_ptr = (unsigned long long)conn_ids;
+    res.count_fbs=0;
+    res.count_encoders=0;
+
+    printn(wrapper(fd ,0xC04064A0, &res)); //duel call to get the connector IDs now
+
+    struct drm_mode_get_connector connector;
+    connector.encoders_ptr = 0;
+    connector.modes_ptr = 0;
+    connector.props_ptr = 0;
+    connector.prop_values_ptr = 0;
+    connector.count_modes = 0;
+    connector.count_props = 0;
+    connector.count_encoders = 0;
+    connector.encoder_id = 0;
+    connector.connector_id = conn_ids[0]; 
+    connector.connector_type = 0;
+    connector.connector_type_id = 0;
+    connector.connection = 0;
+    connector.mm_width = 0;
+    connector.mm_height = 0;
+    connector.subpixel = 0;
+    connector.pad = 0;
+
+    printn(wrapper(fd ,0xC05064A7, &connector)); 
+    printn(connector.connection);
+    print("Width (mm): ");
+    printn(connector.mm_width);
+    print("Height (mm): ");
+    printn(connector.mm_height);
+    
 
     __asm__ volatile(
         "syscall"
