@@ -66,4 +66,34 @@ struct drm_mode_get_connector {
     unsigned int pad;
 };
 
+struct drm_mode_modeinfo {
+    unsigned int clock;
+    unsigned short hdisplay;
+    unsigned short hsync_start;
+    unsigned short hsync_end;
+    unsigned short htotal;
+    unsigned short hskew;
+    unsigned short vdisplay;
+    unsigned short vsync_start;
+    unsigned short vsync_end;
+    unsigned short vtotal;
+    unsigned short vscan;
+    unsigned int verfresh;
+    unsigned int flags;
+    unsigned int type;
+    char name[32];
+};
+
+struct drm_mode_crtc {
+    unsigned long long set_connectors_ptr;
+    unsigned int count_connectors;
+    unsigned int crtc_id;
+    unsigned int fb_id;
+    unsigned int x;
+    unsigned int y; 
+    unsigned int gamma_size;
+    unsigned int mode_valid;
+    struct drm_mode_modeinfo mode;
+};
+
 #endif

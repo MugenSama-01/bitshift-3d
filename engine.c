@@ -1,6 +1,6 @@
 #include "utils.h"
 
-int graphics_win(){  //opentind the graphics card file
+int graphics_win(){  //opening the graphics card file
     const char *path = "/dev/dri/card1";
     int fd;
 
@@ -72,8 +72,8 @@ void _start(){
 
     struct drm_mode_create_dumb dumb;
 
-    dumb.width = 800;
-    dumb.height=600;
+    dumb.width =1920;
+    dumb.height=1080;
     dumb.bpp=32;
     dumb.flag = 0;
     dumb.handle = 0;
@@ -107,8 +107,8 @@ void _start(){
 
     struct framebuffer fb;
     fb.fb_id=0;
-    fb.width=800;
-    fb.height=600;
+    fb.width=1920;
+    fb.height=1080;
     fb.pitch=dumb.pitch;
     fb.bpp=32;
     fb.depth=24;
@@ -167,13 +167,45 @@ void _start(){
     connector.subpixel = 0;
     connector.pad = 0;
 
-    printn(wrapper(fd ,0xC05064A7, &connector)); 
+    printn(wrapper(fd ,0xC05064A7, &connector));  //connecting to the laptop screen
     printn(connector.connection);
-    print("Width (mm): ");
-    printn(connector.mm_width);
-    print("Height (mm): ");
-    printn(connector.mm_height);
+
+    print("Total Modes: ");
+    printn(connector.count_modes);
     
+    struct drm_mode_modeinfo modes[connector.count_modes];
+
+    connector.modes_ptr = (unsigned long long)modes;
+    connector.count_props=0;
+    connector.count_encoders = 0;
+
+    wrapper(fd , 0xC05064A7 , &connector); //defining the mode or electring timing rules
+
+    print("Preferred Resolution: ");
+    print(modes[0].name);
+    print("\n");
+
+    unsigned int *pixels = (unsigned int *)map_ptr;
+    for(int i = 0; i < 1920; i++){
+        pixels[i] = 0x00FF0000;
+    }
+
+    struct drm_mode_crtc crtc;
+    crtc.set_connectors_ptr = (unsigned long long)conn_ids;
+    crtc.count_connectors = 1;
+    crtc.crtc_id = crtc_ids[0];
+    crtc.fb_id = fb.fb_id;
+    crtc.x= 0;
+    crtc.y = 0;
+    crtc.gamma_size = 0;
+    crtc.mode_valid = 1;
+    crtc.mode = modes[0];
+
+    int crtc_status = wrapper(fd, 0xC06864A2 , &crtc);
+
+    printn(crtc_status);
+
+    for(volatile int delay = 0; delay < 2000000000; delay++);
 
     __asm__ volatile(
         "syscall"
